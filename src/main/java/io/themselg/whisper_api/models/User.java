@@ -36,6 +36,10 @@ public class User {
   @DBRef
   private Set<Role> roles = new HashSet<>();
 
+  private String PushToken;
+  private String DisplayName;
+  private String ProfilePicture; // Base64 de la imagen
+
   public User() {
   }
 
@@ -43,5 +47,6 @@ public class User {
     this.username = username;
     this.email = email;
     this.password = password;
+    
   }
 }

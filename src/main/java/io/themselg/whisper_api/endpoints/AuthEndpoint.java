@@ -1,4 +1,4 @@
-package io.themselg.whisper_api.controllers;
+package io.themselg.whisper_api.endpoints;
 
 import java.util.HashSet;
 import java.util.List;
@@ -35,7 +35,7 @@ import io.themselg.whisper_api.security.services.UserDetailsImpl;
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/auth")
-public class AuthController {
+public class AuthEndpoint {
   @Autowired
   AuthenticationManager authenticationManager;
 
@@ -52,14 +52,19 @@ public class AuthController {
   JwtUtils jwtUtils;
 
   @PostMapping("/signin")
+  // Se recive loginRequest como JSON
   public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
+    // Envia las credenciales al AuthenticationManager para autenticar
     Authentication authentication = authenticationManager.authenticate(
         new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
+
+    // Genera JWT
     String jwt = jwtUtils.generateJwtToken(authentication);
     
+    // Obtiene detalles del usuario autenticado (oid, username, email, roles)
     UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();    
     List<String> roles = userDetails.getAuthorities().stream()
         .map(item -> item.getAuthority())
@@ -73,24 +78,40 @@ public class AuthController {
   }
 
   @PostMapping("/signup")
+  // Se recive signupRequest como JSON
   public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
+    // Se verifica si ya existe:
+    // 1. username
     if (userRepository.existsByUsername(signUpRequest.getUsername())) {
       return ResponseEntity
           .badRequest()
-          .body(new MessageResponse("Error: Username is already taken!"));
+          .body(new MessageResponse("El nombre de usuario ya está en uso"));
     }
-
+    // 2. email
     if (userRepository.existsByEmail(signUpRequest.getEmail())) {
       return ResponseEntity
           .badRequest()
-          .body(new MessageResponse("Error: Email is already in use!"));
+          .body(new MessageResponse("El correo electrónico ya está en uso"));
     }
 
-    // Create new user's account
+    // Crear nuevo usuario
     User user = new User(signUpRequest.getUsername(), 
-               signUpRequest.getEmail(),
-               encoder.encode(signUpRequest.getPassword()));
+                   signUpRequest.getEmail(),
+                   encoder.encode(signUpRequest.getPassword()));
 
+        // Si la peticion incluye:
+        // 1. displayName
+        if (signUpRequest.getDisplayName() != null) {
+            user.setDisplayName(signUpRequest.getDisplayName());
+        }
+        // 2. profilePicture
+        if (signUpRequest.getProfilePicture() != null) {
+            user.setProfilePicture(signUpRequest.getProfilePicture());
+        }
+        // Se agregan al usuario antes de asignar roles
+
+    // Asignación de roles
+    // (En la implementación actual, solo se usa ROLE_USER)
     Set<String> strRoles = signUpRequest.getRole();
     Set<Role> roles = new HashSet<>();
 
@@ -122,8 +143,9 @@ public class AuthController {
     }
 
     user.setRoles(roles);
+    // Guardar en BD
     userRepository.save(user);
 
-    return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+    return ResponseEntity.ok(new MessageResponse("Usuario registrado exitosamente"));
   }
 }

@@ -18,6 +18,8 @@ import io.themselg.whisper_api.security.jwt.AuthEntryPointJwt;
 import io.themselg.whisper_api.security.jwt.AuthTokenFilter;
 import io.themselg.whisper_api.security.services.UserDetailsServiceImpl;
 
+import org.springframework.http.HttpMethod;
+
 @Configuration
 @EnableMethodSecurity
 public class WebSecurityConfig {
@@ -53,17 +55,19 @@ public class WebSecurityConfig {
   }
   
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http.csrf(csrf -> csrf.disable())
-        .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth -> 
-          auth.requestMatchers("/api/auth/**").permitAll()
-              .requestMatchers("/api/test/**").permitAll()
-              .requestMatchers("/ws/**").permitAll()
-              .anyRequest().authenticated()
-        );
-    
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable())
+            .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> 
+                auth.requestMatchers("/api/auth/**").permitAll() // Para el login y registro
+                    .requestMatchers("/api/users/**").authenticated()
+                    .requestMatchers("/api/chat/**").authenticated()
+                    .requestMatchers("/api/stream/**").authenticated()
+                    .requestMatchers("/api/files/upload/**").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/files/view/**").permitAll() // Para que los documentos se puedan abrir en el navegador
+                    .anyRequest().authenticated()
+            );
     http.authenticationProvider(authenticationProvider());
 
     http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
